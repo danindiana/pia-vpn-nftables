@@ -1,0 +1,220 @@
+#!/bin/bash
+# Quick Reference Card - Phase Execution Commands
+
+cat << 'EOF'
+╔═══════════════════════════════════════════════════════════════╗
+║  PIA VPN nftables Setup - Quick Reference                    ║
+║  Copy & paste these commands in order                        ║
+╚═══════════════════════════════════════════════════════════════╝
+
+STEP-BY-STEP COMMANDS
+═══════════════════════════════════════════════════════════════
+
+Navigate to script directory:
+$ cd /path/to/VPN_TS_V2
+
+Phase 1: BACKUP (with sudo)
+───────────────────────────────────────────────────────────────
+$ sudo bash PHASE1-backup.sh
+
+Expected output:
+  ✓ nftables rules backed up
+  ✓ iptables rules backed up
+  ✓ Routes backed up
+  ✓ resolved.conf backed up
+  ✓ Emergency recovery installed
+
+If you see errors about passwords, run with:
+$ sudo -s
+$ bash PHASE1-backup.sh
+$ exit
+
+───────────────────────────────────────────────────────────────
+
+Phase 2: ROUTING CHECK (no sudo needed)
+───────────────────────────────────────────────────────────────
+$ bash PHASE2-routing-check.sh
+
+Expected output:
+  Analysis shows current routes
+  If multi-interface detected, offers options
+
+───────────────────────────────────────────────────────────────
+
+Phase 3: PIA CONFIG (no sudo needed)
+───────────────────────────────────────────────────────────────
+$ bash PHASE3-pia-config.sh
+
+Expected output:
+  Kill Switch: off (disabled)
+  Allow LAN: true (enabled)
+
+───────────────────────────────────────────────────────────────
+
+Phase 4: NFTABLES INSTALL (with sudo)
+───────────────────────────────────────────────────────────────
+$ sudo bash PHASE4-nftables-install.sh
+
+Expected output:
+  Script runs nftables-pia-setup.sh with root privileges
+  You'll see prompts to review and confirm rules
+  
+⚠️  DO NOT skip reviewing the generated rules!
+
+───────────────────────────────────────────────────────────────
+
+Phase 5: TEST CONNECTION (no sudo needed)
+───────────────────────────────────────────────────────────────
+$ bash PHASE5-test-connection.sh
+
+Expected output:
+  "Attempting to connect to VPN..."
+  "✓ VPN Connected!"
+  "VPN IP: 1.2.3.4" (some IP address)
+  
+If this fails with "Bad argument REJECT":
+  → Phase 4 didn't install rules properly
+  → Check: sudo nft list ruleset | grep pia
+  → Re-run Phase 4
+
+───────────────────────────────────────────────────────────────
+
+Phase 6: VERIFY LEAKS (no sudo needed)
+───────────────────────────────────────────────────────────────
+$ bash PHASE6-verify-leaks.sh
+
+Expected output:
+  "✓ Public IP matches VPN IP"
+  "NO IP LEAK DETECTED"
+  
+If public IP differs from VPN IP:
+  → Kill switch not working
+  → Check: sudo nft list ruleset | grep pia
+  → Run: sudo /usr/local/bin/pia-emergency-recovery
+  → Try again
+
+───────────────────────────────────────────────────────────────
+
+Phase 7: MONITOR (ongoing)
+───────────────────────────────────────────────────────────────
+
+Run these periodically (e.g., every 2-6 hours):
+
+Check connection status:
+$ piactl get connectionstate
+$ piactl get vpnip
+
+Check for IP leaks:
+$ curl https://api.ipify.org
+
+Check daemon for errors:
+$ sudo tail -50 /opt/piavpn/var/daemon.log
+
+Check firewall blocks:
+$ sudo journalctl --since "1 hour ago" | grep "PIA-BLOCKED"
+
+═══════════════════════════════════════════════════════════════
+
+TROUBLESHOOTING QUICK REFERENCE
+═══════════════════════════════════════════════════════════════
+
+Problem: "piactl command not found"
+Solution: piactl location: /usr/local/bin/piactl
+         Or use full path: /usr/local/bin/piactl connect
+
+Problem: "sudo: command not found"
+Solution: This shouldn't happen on Linux
+         Try: su -s /bin/bash
+         Then run commands with full paths
+
+Problem: Password prompted repeatedly
+Solution: Run as: sudo -s
+         (enters root shell, no more password prompts)
+         exit  (to leave root shell)
+
+Problem: "VPN won't connect"
+Solution: Check daemon logs:
+         $ sudo tail -50 /opt/piavpn/var/daemon.log
+         
+         Look for: "Bad argument REJECT"
+         → Means nftables rules didn't apply correctly
+         → Re-run Phase 4
+
+Problem: "IP leak detected"
+Solution: Kill switch not blocking traffic
+         $ sudo nft list ruleset | grep "pia-vpn"
+         → If nothing shown, rules didn't load
+         → Re-run Phase 4
+
+Problem: "Lost internet - need recovery"
+Solution: $ sudo /usr/local/bin/pia-emergency-recovery
+         Then follow prompts to restore connectivity
+
+═══════════════════════════════════════════════════════════════
+
+FILES CREATED
+═══════════════════════════════════════════════════════════════
+
+PHASE1-backup.sh          → Backup script
+PHASE2-routing-check.sh   → Routing analysis
+PHASE3-pia-config.sh      → PIA CLI configuration
+PHASE4-nftables-install.sh → Nftables rule installation
+PHASE5-test-connection.sh  → VPN connectivity test
+PHASE6-verify-leaks.sh     → Leak verification tests
+MASTER_EXECUTION_GUIDE.txt → Full documentation
+QUICK_REFERENCE.txt        → This file
+
+Original scripts still available:
+emergency-recovery.sh      → Recovery tool
+nftables-pia-setup.sh     → Nftables configuration
+pia-diagnostic.sh         → Full diagnostics
+pia-config-validator.sh   → Configuration validator
+multi-interface-routing.sh → Routing manager
+
+═══════════════════════════════════════════════════════════════
+
+BACKUPS LOCATION
+═══════════════════════════════════════════════════════════════
+
+After Phase 1, backups saved to:
+  ~/pia-backup-20251229-HHMMSS/
+
+Contains:
+  • nftables-*.nft      (firewall rules)
+  • iptables-*.rules    (iptables rules)
+  • routes-*.txt        (routing table)
+  • resolved.conf       (DNS config)
+  • ufw-backup/         (UFW config if present)
+  • pia-etc-backup/     (PIA settings)
+
+If you need to restore:
+  $ sudo nft flush ruleset
+  $ sudo nft -f ~/pia-backup-*/nftables-*.nft
+
+═══════════════════════════════════════════════════════════════
+
+EMERGENCY RECOVERY
+═══════════════════════════════════════════════════════════════
+
+If everything breaks and you lose network:
+
+$ sudo /usr/local/bin/pia-emergency-recovery
+
+This will:
+  1. Stop PIA service
+  2. Remove VPN interface (tun0)
+  3. Flush firewall rules
+  4. Restore network connectivity
+  5. Show recovery log
+
+Then manually restore from backups if needed.
+
+═══════════════════════════════════════════════════════════════
+
+READY TO START?
+
+$ cd /path/to/VPN_TS_V2
+$ sudo bash PHASE1-backup.sh
+
+Good luck! 🚀
+EOF

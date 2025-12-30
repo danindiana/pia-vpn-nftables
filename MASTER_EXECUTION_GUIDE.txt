@@ -1,0 +1,260 @@
+#!/bin/bash
+# PIA VPN nftables Implementation - Master Execution Guide
+# This document describes how to execute all phases
+
+cat << 'EOF'
+╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║     PIA VPN v3.7.0 nftables Implementation                         ║
+║     Complete 7-Phase Deployment Guide                             ║
+║                                                                    ║
+║     System Status:                                                 ║
+║     ✓ OS: Linux                                                    ║
+║     ✓ Firewall: iptables-nft (nftables wrapper)                   ║
+║     ✓ PIA Version: 3.7.0+08412                                     ║
+║     ✓ Current State: Disconnected                                  ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝
+
+IMPLEMENTATION PHASES
+═════════════════════════════════════════════════════════════════════
+
+Phase 0: PRE-FLIGHT CHECKS ✅ COMPLETE
+─────────────────────────────────────
+  Status: PASSED
+  Results:
+    • iptables version: 1.8.7 (using nftables wrapper)
+    • PIA version: 3.7.0+08412 (installed)
+    • PIA connection: Disconnected (ready for setup)
+    • Kill Switch: Not configured
+    • Allow LAN: Enabled
+  
+  Next: Proceed to Phase 1
+
+═════════════════════════════════════════════════════════════════════
+
+Phase 1: COMPREHENSIVE BACKUP (5 minutes)
+──────────────────────────────────────────
+  What: Back up all current network configuration
+  Why: Recovery fallback if something goes wrong
+  
+  File: PHASE1-backup.sh
+  Usage: sudo bash PHASE1-backup.sh
+  
+  This will backup:
+    ✓ nftables ruleset
+    ✓ iptables rules
+    ✓ Routing table
+    ✓ systemd-resolved configuration
+    ✓ UFW configuration (if present)
+    ✓ PIA settings
+    ✓ Install emergency recovery script
+  
+  Output: ~/pia-backup-YYYYMMDD-HHMMSS/
+  
+  ⚠️  IMPORTANT: RUN WITH SUDO
+
+═════════════════════════════════════════════════════════════════════
+
+Phase 2: MULTI-INTERFACE ROUTING CHECK (2 minutes)
+───────────────────────────────────────────────────
+  What: Check for weighted nexthop routes that might conflict
+  
+  File: PHASE2-routing-check.sh
+  Usage: bash PHASE2-routing-check.sh
+  
+  If multi-interface routing is detected:
+    Option A: Simplify to single route (recommended)
+              → sudo bash multi-interface-routing.sh
+    Option B: Keep current routing (may cause issues)
+    Option C: Manual configuration
+  
+  Current status: Will be checked when you run the script
+
+═════════════════════════════════════════════════════════════════════
+
+Phase 3: CONFIGURE PIA SETTINGS (2 minutes)
+────────────────────────────────────────────
+  What: Disable PIA's built-in firewall, enable LAN access
+  Why: PIA's firewall doesn't work with nftables
+  
+  File: PHASE3-pia-config.sh
+  Usage: bash PHASE3-pia-config.sh
+  
+  This will:
+    • Set killswitch off (we'll use nftables instead)
+    • Set allowlan true (maintain local network access)
+    • Apply settings
+  
+  No sudo required - just piactl commands
+
+═════════════════════════════════════════════════════════════════════
+
+Phase 4: INSTALL NFTABLES KILL SWITCH (15 minutes)
+───────────────────────────────────────────────────
+  What: Generate and apply custom nftables rules
+  Why: Replace PIA's broken firewall with native nftables
+  
+  File: PHASE4-nftables-install.sh
+  Usage: sudo bash PHASE4-nftables-install.sh
+  
+  This will:
+    • Detect physical network interfaces
+    • Detect PIA server IP ranges dynamically
+    • Detect your LAN subnet
+    • Generate nftables rules
+    • Validate syntax before applying
+    • Create backup before changes
+    • Make rules persistent
+  
+  ⚠️  IMPORTANT: RUN WITH SUDO
+  ⚠️  You'll be prompted to confirm rules before applying
+
+═════════════════════════════════════════════════════════════════════
+
+Phase 5: TEST VPN CONNECTION (5 minutes)
+────────────────────────────────────────
+  What: Connect to VPN and verify it works
+  Why: Confirm nftables rules don't break connectivity
+  
+  File: PHASE5-test-connection.sh
+  Usage: bash PHASE5-test-connection.sh
+  
+  This will:
+    • Attempt VPN connection
+    • Wait for connection (up to 30 seconds)
+    • Verify VPN IP is assigned
+    • Show connection details
+  
+  Expected: Should connect without "Bad argument REJECT" errors
+
+═════════════════════════════════════════════════════════════════════
+
+Phase 6: VERIFY NO LEAKS (10 minutes)
+──────────────────────────────────────
+  What: Run diagnostic tests and manual leak checks
+  Why: Confirm kill switch and privacy protections work
+  
+  File: PHASE6-verify-leaks.sh
+  Usage: bash PHASE6-verify-leaks.sh
+  
+  Tests include:
+    • Comprehensive diagnostic
+    • IP leak check (public IP vs VPN IP)
+    • DNS configuration verification
+    • WebRTC leak test (browser-based)
+    • Kill switch test (optional - disconnects VPN)
+  
+  Critical tests:
+    ✓ Public IP must match VPN IP
+    ✓ DNS must resolve
+    ✓ Kill switch must block traffic when disconnected
+
+═════════════════════════════════════════════════════════════════════
+
+Phase 7: MONITOR STABILITY (24-48 hours)
+────────────────────────────────────────
+  What: Monitor logs and watch for anomalies
+  Why: Catch edge cases and confirm reliability
+  
+  Commands to run periodically:
+  
+  # Check PIA connection
+  piactl get connectionstate
+  piactl get vpnip
+  
+  # Check for firewall blocks
+  sudo journalctl --since "1 hour ago" | grep "PIA-BLOCKED"
+  
+  # Check PIA daemon for errors
+  sudo tail -50 /opt/piavpn/var/daemon.log
+  
+  # Check for IP leaks
+  curl https://api.ipify.org
+  
+  Success criteria:
+    ✓ No disconnects in 24 hours
+    ✓ No IP leaks detected
+    ✓ No "Bad argument REJECT" errors in logs
+    ✓ System survives reboot with VPN still working
+
+═════════════════════════════════════════════════════════════════════
+
+EXECUTION ORDER
+═════════════════════════════════════════════════════════════════════
+
+1. PHASE 0: ✅ COMPLETE (already done)
+
+2. PHASE 1: Backup
+   $ cd /path/to/VPN_TS_V2
+   $ sudo bash PHASE1-backup.sh
+   
+3. PHASE 2: Routing Check
+   $ bash PHASE2-routing-check.sh
+   
+4. PHASE 3: Configure PIA
+   $ bash PHASE3-pia-config.sh
+   
+5. PHASE 4: Install nftables (REQUIRES SUDO)
+   $ sudo bash PHASE4-nftables-install.sh
+   
+6. PHASE 5: Test Connection
+   $ bash PHASE5-test-connection.sh
+   
+7. PHASE 6: Verify Leaks
+   $ bash PHASE6-verify-leaks.sh
+   
+8. PHASE 7: Monitor (ongoing)
+   $ # Run diagnostic commands periodically
+
+═════════════════════════════════════════════════════════════════════
+
+EMERGENCY RECOVERY
+═════════════════════════════════════════════════════════════════════
+
+If anything goes wrong and you lose network connectivity:
+
+$ sudo /usr/local/bin/pia-emergency-recovery
+
+This will:
+  • Stop PIA service
+  • Remove VPN interface
+  • Flush firewall rules
+  • Restore network connectivity
+  • Provide recovery logs
+
+Then use backed-up files to restore original state if needed.
+
+═════════════════════════════════════════════════════════════════════
+
+TIMING SUMMARY
+═════════════════════════════════════════════════════════════════════
+
+Phases 1-6: ~52 minutes of active work
+Phase 7:    24-48 hours of passive monitoring
+Total:      ~2-3 days until fully verified
+
+Breakdown:
+  Phase 1: 5 minutes
+  Phase 2: 2 minutes
+  Phase 3: 2 minutes
+  Phase 4: 15 minutes
+  Phase 5: 5 minutes
+  Phase 6: 10 minutes
+  ────────────────
+  Total:   39 minutes (plus 24-48 hour monitoring)
+
+═════════════════════════════════════════════════════════════════════
+
+READY TO BEGIN?
+═════════════════════════════════════════════════════════════════════
+
+Your system is ready for Phase 1. Start with:
+
+$ cd /path/to/VPN_TS_V2
+$ sudo bash PHASE1-backup.sh
+
+Then follow the phases in order.
+
+Good luck! 🚀
+EOF
