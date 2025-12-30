@@ -168,7 +168,7 @@ This project is provided for educational and personal use.
 ## Support
 
 For issues with:
-- **PIA VPN**: https://www.pia.io/
+- **PIA VPN**: https://www.privateinternetaccess.com
 - **nftables**: Linux kernel documentation or your distro's nftables guide
 - **This implementation**: Review FINAL_REVIEW.md or run pia-diagnostic.sh
 
